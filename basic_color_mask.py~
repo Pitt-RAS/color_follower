@@ -124,8 +124,6 @@ def init():
     #cv2.namedWindow('binary')
     #setup_control_panel()
     webcam = cv2.VideoCapture(0)
-    webcam.set(3, 320)
-    webcam.set(4, 240)
     set_img_dimensions()
     run()
 
