@@ -1,4 +1,12 @@
 #!/usr/bin/env python 
+"""
+This color following code is based on the work of github user ClintLiddick.
+
+The script uses OpenCV2 to capture webcam input, convert it to HSV, 
+threshold and mask the images, and find the center of a blob of the
+color (which is set by tuning the trackbars).
+"""
+
 import cv2
 import numpy
 
@@ -34,6 +42,22 @@ def updateHSV():
     highS = cv2.getTrackbarPos('highS','control')
     lowV  = cv2.getTrackbarPos('lowV','control')
     highV = cv2.getTrackbarPos('highV','control')
+
+def update_motors(x, y):
+    """
+    Given the x and y coordinates of the color blob,
+    update the left and right motor speeds.
+    """
+    # calculate blob's displacement from horizontal center of image (1-dimensional)
+
+    # if the coordinates are negative (meaning invalid), set a medium-speed CCW pivot (no forward motion)
+
+    # if displacement is within accepted range, run motors at the same speed
+    # if displacement is negative, turn left by slowing the left tread and speeding up the right tread
+    # else (if displacement is positive) turn right by slowing the right tread and speeding up the left tread 
+
+    # scale the speed difference by the magnitude of the displacement?
+    pass
 
 def run():
     """Main image masking and publishing code"""
