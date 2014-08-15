@@ -9,6 +9,16 @@ color (which is set by tuning the trackbars).
 
 import cv2
 import numpy
+import Adafruit_BBIO.GPIO as GPIO
+import Adafruit_BBIO.PWM as PWM
+
+"""
+Output pins for the motor driver board:
+"""
+motor_pwms = ["P9_22", "P9_21"]
+motor_ins = [["P9_23", "P9_24"], ["P9_25", "P9_26"]]
+STBY = "P9_27"
+
 
 # OpenCV HSV value ranges
 # right now follows yellow - needs to be hand calibrated before each run due to lighting and camera changes
@@ -31,11 +41,58 @@ cam_cy = 120
 
 DEAD_ZONE = 10
 FORWARD_SPEED = 50.0
+TURN_SPEED = 25.0
+FORWARD = 1
+BACKWARD = -1
+LEFT = 0
+RIGHT = 1
 
 samples_without_find = 0
 
 def nothing(x):
     pass
+
+
+def init_motors():
+    """
+    Initialize the pins needed for the motor driver.
+    """
+    global motor_ins
+    global motor_pwms
+    # initialize GPIO pins
+    GPIO.setup(STBY, GPIO.OUT)
+    GPIO.output(STBY, GPIO.HIGH)
+    for motor in motor_ins:
+        for pin in motor:
+            GPIO.setup(pin, GPIO.OUT)
+            GPIO.output(pin, GPIO.LOW)
+
+    # initialize PWM pins
+    # first need bogus start due to unknown bug in library
+    PWM.start("P9_14", 50.0)
+    PWM.stop("P9_14")
+    # now start the desired PWMs
+    for pwm_pin in motor_pwms:
+        PWM.start(pwm_pin, 0.0)
+        PWM.set_run(pwm_pin, 1)
+
+def set_motor(motor, direction, value):
+    """
+    Set an individual motor's direction and speed
+    """
+    if direction == BACKWARD: # For now, assume CW is forwards
+        # forwards: in1 LOW, in2 HIGH
+        GPIO.output(motor_ins[motor][0], GPIO.LOW)
+        GPIO.output(motor_ins[motor][1], GPIO.HIGH)
+    elif direction == FORWARD:
+        GPIO.output(motor_ins[motor][0], GPIO.HIGH)
+        GPIO.output(motor_ins[motor][1], GPIO.LOW)
+    else:
+        # there has been an error, stop motors
+        GPIO.output(STBY, GPIO.LOW)
+    PWM.set_duty_cycle(motor_pwms[motor], value)
+
+
 
 def update_motors(x, y):
     """
@@ -44,23 +101,27 @@ def update_motors(x, y):
     """
     # calculate blob's displacement from horizontal center of image (1-dimensional)
     displacement = x - cam_cx
-    # if the coordinates are negative (meaning invalid), set a medium-speed CCW pivot (no forward motion)
    
     # if displacement is within accepted range, run motors at the same speed
     if abs(displacement) <= DEAD_ZONE:
         print 'move forward'
-    # if displacement is negative, turn left by slowing the left tread and speeding up the right tread
+        set_motor(LEFT, FORWARD, FORWARD_SPEED)
+        set_motor(RIGHT, FORWARD, FORWARD_SPEED)
     elif displacement < 0:
         print 'turn left'
-    # else (if displacement is positive) turn right by slowing the right tread and speeding up the left tread 
+        set_motor(LEFT, BACKWARD, TURN_SPEED)
+        set_motor(RIGHT, FORWARD, TURN_SPEED)
     else:
+        set_motor(LEFT, FORWARD, TURN_SPEED)
+        set_motor(RIGHT, BACKWARD, TURN_SPEED)
         print 'turn right'
+
     # TODO: scale the speed difference by the magnitude of the displacement?
  
 
 def run():
-    global samples_without_find
     """Main image masking and publishing code"""
+    global samples_without_find
     while True:
         # read frame from webcam
         _,img = webcam.read()
@@ -101,6 +162,17 @@ def set_img_dimensions():
     _,img = webcam.read()
     cam_height,cam_width,_ = img.shape
 
+def close_all():
+    """
+    Clean up all motor outputs
+    """
+    GPIO.output(STBY, GPIO.LOW)
+    for motor in motor_ins:
+        for pin in motor:
+            GPIO.output(pin, GPIO.LOW)
+    for pwm_pin in motor_pwms:
+        PWM.stop(pwm_pin)
+    
 
 def init():
     """Initialize and run the program"""
@@ -110,8 +182,12 @@ def init():
     webcam.set(3, 320)
     webcam.set(4, 240)
     set_img_dimensions()
-    run()
-
+    init_motors()
+    try:
+        run()
+    except:
+        close_all()
+    exit()
 
 if __name__ == '__main__':
     init()
