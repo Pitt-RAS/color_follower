@@ -4,7 +4,11 @@ This color following code is based on the work of github user ClintLiddick.
 
 The script uses OpenCV2 to capture webcam input, convert it to HSV, 
 threshold and mask the images, and find the center of a blob of the
-color (which is set by tuning the trackbars).
+color.
+
+The displacement of the blob from the center coordinates is used to decide
+motor direction and speed, which is then set using the motor outputs and
+PWM pins.
 """
 
 import cv2
@@ -15,9 +19,9 @@ import Adafruit_BBIO.PWM as PWM
 """
 Output pins for the motor driver board:
 """
-motor_pwms = ["P9_22", "P9_21"]
-motor_ins = [["P9_23", "P9_24"], ["P9_25", "P9_26"]]
-STBY = "P9_27"
+motor_pwms = ["P9_22", "P9_21"]   #[M1D2, M2D2], 
+motor_ins = [["P9_23", "P9_24"], ["P9_25", "P9_26"]]    # [[M1IN1, M1IN2], [M2IN1, M2IN2]]
+STBY = "P9_27"  # Connect to "EN" pin on Pololu Dual MC33926 board
 
 
 # OpenCV HSV value ranges
